@@ -1,0 +1,45 @@
+# This repository is not a Python package. The file carries the lint
+# configuration only. Run the checks with: make check
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle
+    "F",      # pyflakes
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "RUF",    # ruff
+    "S",      # flake8-bandit: security
+    "ASYNC",  # flake8-async
+    "DTZ",    # flake8-datetimez: naive datetimes
+    "TRY",    # tryceratops: exception handling
+    "PERF",   # perflint
+    "G",      # flake8-logging-format
+    "LOG",    # flake8-logging
+    "ANN",    # flake8-annotations
+    "PTH",    # flake8-use-pathlib
+    "I",      # isort
+    "SIM",    # flake8-simplify
+    "C4",     # flake8-comprehensions
+    "RET",    # flake8-return
+    "ARG",    # flake8-unused-arguments
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The tests use a seeded random.Random for repeatable results, replace module
+# attributes to avoid network calls, and raise plain errors as fixtures.
+"cover/test_cover.py" = [
+    "S101",    # assert is the point of a test
+    "S311",    # a seeded generator makes the result repeatable
+    "ARG001",  # a replacement function must match the real signature
+    "ARG005",  # the same, for a lambda
+    "ANN001",  # the same, for a lambda
+    "SIM117",  # nested with reads better when each context is a separate claim
+    "TRY003",  # a fixture error carries its message inline
+]
+
+[tool.ruff.format]
+quote-style = "double"

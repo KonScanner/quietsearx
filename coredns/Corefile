@@ -1,0 +1,10 @@
+# All queries go to base.dns.mullvad.net over DNS-over-TLS (port 853).
+# base.dns.mullvad.net blocks advertisements, trackers, and malware.
+. {
+    forward . tls://194.242.2.4 {
+        tls_servername base.dns.mullvad.net
+        health_check 10s
+    }
+    cache 300
+    errors
+}

@@ -1,0 +1,12 @@
+# Secrets. Never commit these.
+.env
+.env.*
+!.env.example
+
+# Written by the SearXNG container on the first start.
+searxng/uwsgi.ini
+
+# Python
+__pycache__/
+*.py[cod]
+.ruff_cache/

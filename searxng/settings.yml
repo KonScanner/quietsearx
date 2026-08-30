@@ -1,0 +1,62 @@
+# SearXNG local settings. Values that are not set here come from the defaults.
+use_default_settings: true
+
+general:
+  instance_name: "Local SearXNG"
+  debug: false
+
+server:
+  # The value comes from the SEARXNG_SECRET environment variable.
+  secret_key: ""
+  base_url: false
+  # The limiter is off. A local instance does not need rate limits.
+  limiter: false
+  public_instance: false
+  image_proxy: true
+  method: "GET"
+
+search:
+  safe_search: 0
+  autocomplete: "duckduckgo"
+  favicon_resolver: "duckduckgo"
+  default_lang: "en"
+  formats:
+    - html
+    - json
+    - csv
+    - rss
+
+ui:
+  static_use_hash: true
+  # Keep the query out of the page title. Titles reach the browser history,
+  # window managers, and screen recordings.
+  query_in_title: false
+  default_theme: simple
+  theme_args:
+    simple_style: auto
+  infinite_scroll: true
+  hotkeys: default
+
+valkey:
+  url: redis://valkey:6379/0
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 20.0
+  pool_connections: 100
+  pool_maxsize: 20
+  # HTTP/2 gives a distinct TLS fingerprint. HTTP/1.1 looks more common.
+  enable_http2: false
+  # Do not add a suffix to the user agent. A suffix identifies your instance.
+  useragent_suffix: ""
+
+  # --- OPT-IN: send every engine request through Tor ---
+  # 1. Remove the "#" from the five lines below.
+  # 2. Run: docker compose --profile tor up -d
+  # Read the warning in README.md first. Some engines block Tor exit nodes.
+  #
+  # using_tor_proxy: true
+  # extra_proxy_timeout: 30
+  # proxies:
+  #   all://:
+  #     - socks5h://tor:9050
