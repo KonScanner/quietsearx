@@ -47,6 +47,9 @@ services:
     image: docker.io/searxng/searxng:latest
     container_name: searxng
     restart: unless-stopped
+    # The image has no USER directive, so the app would run as root. Run it
+    # as the image's own "searxng" user (uid/gid 977) instead.
+    user: "977:977"
     depends_on:
       - valkey
       - mullvad-dns
@@ -67,14 +70,8 @@ services:
       # There is no default. Put your own key in a .env file. Generate one
       # with: openssl rand -hex 32
       SEARXNG_SECRET: ${SEARXNG_SECRET:?set SEARXNG_SECRET in a .env file, generate one with openssl rand -hex 32}
-      UWSGI_WORKERS: ${SEARXNG_UWSGI_WORKERS:-4}
-      UWSGI_THREADS: ${SEARXNG_UWSGI_THREADS:-4}
     cap_drop:
       - ALL
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
     logging:
       driver: json-file
       options:

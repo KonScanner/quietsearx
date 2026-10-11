@@ -26,6 +26,15 @@ search:
     - csv
     - rss
 
+# Onion engines need Tor. SearXNG does not load them when no Tor proxy is set,
+# and it writes one error line per engine at every start. These two entries
+# keep that noise out of the log. Delete them when you turn on the tor profile.
+engines:
+  - name: ahmia
+    inactive: true
+  - name: torch
+    inactive: true
+
 ui:
   static_use_hash: true
   # Keep the query out of the page title. Titles reach the browser history,
@@ -54,6 +63,8 @@ outgoing:
   # 1. Remove the "#" from the five lines below.
   # 2. Run: docker compose --profile tor up -d
   # Read the warning in README.md first. Some engines block Tor exit nodes.
+  # Note: also delete the two onion engine entries in the "engines" block
+  # above, or ahmia and torch stay inactive.
   #
   # using_tor_proxy: true
   # extra_proxy_timeout: 30

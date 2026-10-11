@@ -33,6 +33,8 @@ Items 3 and 4 are off by default. Read the warnings before you turn them on.
 | --- | --- |
 | `docker-compose.yml` | The service definitions. |
 | `searxng/settings.yml` | The SearXNG configuration. |
+| `searxng/favicons.toml` | The favicon resolver and cache defaults. |
+| `searxng/limiter.toml` | The bot detection defaults. |
 | `coredns/Corefile` | The DNS resolver configuration. |
 | `cover/cover.py` | The decoy search generator. |
 | `cover/test_cover.py` | The tests for the generator. |
@@ -85,8 +87,6 @@ Set these values in your `.env` file. Only the first one is required.
 | --- | --- | --- |
 | `SEARXNG_SECRET` | none | The session key. Generate it with `openssl rand -hex 32`. |
 | `SEARXNG_PORT` | `47821` | The host port for the web interface. |
-| `SEARXNG_UWSGI_WORKERS` | `4` | The uWSGI worker count. |
-| `SEARXNG_UWSGI_THREADS` | `4` | The uWSGI thread count. |
 | `COVER_MEAN_INTERVAL` | `180` | The mean seconds between decoy searches. |
 | `COVER_USER_AGENT` | a Chrome string | The User-Agent for decoy searches. |
 | `COVER_LOG_QUERIES` | `0` | Set to `1` to write the decoy text to the log. |
@@ -193,7 +193,8 @@ Every engine request leaves through the Tor network. The search engines then
 see a Tor exit address, not your address.
 
 1. Open `searxng/settings.yml`. Remove the `#` from the `using_tor_proxy`
-   block.
+   block. Delete the two `inactive` onion engine entries in the `engines`
+   block at the same time.
 2. Start the container:
 
 ```bash
@@ -323,15 +324,25 @@ MIT. See [LICENSE](LICENSE).
 - The rate limiter is off. This is correct for a private local instance. Set
   `limiter: true` in `searxng/settings.yml` when you make the instance
   public.
-- The container writes `uwsgi.ini` into `searxng/` on the first start. Git
-  ignores that file.
 - The container owns `searxng/`, so your user cannot edit `settings.yml`
   directly. Take ownership first:
 
   ```bash
   sudo chown -R "$USER" searxng/
   # edit searxng/settings.yml, then:
+  sudo chown -R 977:977 searxng/
   docker compose restart searxng
   ```
+
+  The app runs as user `searxng`, uid 977. A file that your user owns stays
+  readable for the app when its mode is `644`. The app cannot change the
+  ownership itself.
+- The onion engines `ahmia` and `torch` are `inactive` in
+  `searxng/settings.yml`. SearXNG does not load them without Tor, and it
+  writes one error per engine at every start. Delete the two entries when you
+  turn on the tor profile.
+- The image runs granian, not uWSGI. It starts one worker with four threads.
+  The old `SEARXNG_UWSGI_WORKERS` and `SEARXNG_UWSGI_THREADS` variables had
+  no effect on it.
 - Select the search engines in the web interface. Open **Preferences** >
   **Engines**.
