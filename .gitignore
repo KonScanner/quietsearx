@@ -6,6 +6,9 @@
 # Written by the SearXNG container on the first start.
 searxng/uwsgi.ini
 
+# A local override file for debugging, for example to turn the SearXNG log on.
+docker-compose.override.yml
+
 # Python
 __pycache__/
 *.py[cod]

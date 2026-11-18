@@ -17,8 +17,12 @@ server:
 
 search:
   safe_search: 0
-  autocomplete: "duckduckgo"
-  favicon_resolver: "duckduckgo"
+  # No autocomplete. The browser sends every prefix to a suggestion service,
+  # which learns the query before it is complete. Blank turns it off.
+  autocomplete: ""
+  # No favicon resolver. A resolver receives the host of every result, so a
+  # third party can profile the searches. Blank turns it off.
+  favicon_resolver: ""
   default_lang: "en"
   formats:
     - html
@@ -34,6 +38,24 @@ engines:
     inactive: true
   - name: torch
     inactive: true
+  # General engines that answer from this network. Bing, Mwmbl and Seznam
+  # return results here. See README.md for the test that measured this.
+  - name: bing
+    disabled: false
+  - name: mwmbl
+    disabled: false
+  - name: seznam
+    disabled: false
+  # General engines that this network cannot use. They answer with a CAPTCHA,
+  # a suspension or an access denial, so each search would wait for the error
+  # and spend the rate limit of the instance. Re-enable one after a check with
+  # `make engines`.
+  - name: brave
+    disabled: true
+  - name: duckduckgo
+    disabled: true
+  - name: google cse
+    disabled: true
 
 ui:
   static_use_hash: true
