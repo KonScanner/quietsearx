@@ -15,17 +15,20 @@ SearXNG is a metasearch engine. It sends your query to other search engines
 and it returns the results. The engines see the instance. They do not see
 your browser.
 
-This repository adds four things to a plain SearXNG instance.
+This repository adds five things to a plain SearXNG instance.
 
 1. A local CoreDNS resolver. It forwards every name lookup to Mullvad over
    DNS-over-TLS.
 2. A settings file that removes identifying details from the outgoing
-   requests.
-3. An optional Tor container. It hides your address from the search engines.
-4. An optional cover traffic generator. It sends decoy searches at random
+   requests, and that turns off autocomplete and the favicon resolver.
+3. A set of general engines that answer from this network. The SearXNG
+   defaults use engines that challenge a private address, so a default
+   installation returns no results.
+4. An optional Tor container. It hides your address from the search engines.
+5. An optional cover traffic generator. It sends decoy searches at random
    times.
 
-Items 3 and 4 are off by default. Read the warnings before you turn them on.
+Items 4 and 5 are off by default. Read the warnings before you turn them on.
 
 ## What is inside
 
@@ -38,6 +41,8 @@ Items 3 and 4 are off by default. Read the warnings before you turn them on.
 | `coredns/Corefile` | The DNS resolver configuration. |
 | `cover/cover.py` | The decoy search generator. |
 | `cover/test_cover.py` | The tests for the generator. |
+| `scripts/check_engines.py` | The engine health check. |
+| `scripts/test_check_engines.py` | The tests for the health check. |
 | `.env.example` | The template for your local settings. |
 | `Makefile` | The check command. |
 
@@ -74,10 +79,12 @@ docker compose down -v       # stop and delete the Valkey volume
 ## Other commands
 
 ```bash
-docker compose logs -f searxng                 # show the logs
 docker compose restart searxng                 # apply a change to settings.yml
 docker compose pull && docker compose up -d    # update the images
 ```
+
+The SearXNG container keeps no log. See [Debug a failing
+engine](#debug-a-failing-engine).
 
 ## Configuration
 
@@ -87,6 +94,8 @@ Set these values in your `.env` file. Only the first one is required.
 | --- | --- | --- |
 | `SEARXNG_SECRET` | none | The session key. Generate it with `openssl rand -hex 32`. |
 | `SEARXNG_PORT` | `47821` | The host port for the web interface. |
+| `SEARXNG_BIND_ADDRESS` | `127.0.0.1` | The host address for the web interface. Other containers use `http://searxng:8080` and do not need it. |
+| `SEARXNG_GRANIAN_THREADS` | `16` | The number of search worker threads. |
 | `COVER_MEAN_INTERVAL` | `180` | The mean seconds between decoy searches. |
 | `COVER_USER_AGENT` | a Chrome string | The User-Agent for decoy searches. |
 | `COVER_LOG_QUERIES` | `0` | Set to `1` to write the decoy text to the log. |
@@ -172,6 +181,108 @@ Then run `docker compose restart mullvad-dns`.
 The certificate name must agree with the address. Change `tls_servername` in
 the same file.
 
+## Search engines
+
+A plain SearXNG instance enables Google, Bing, DuckDuckGo and Brave. From a
+home or small-office address the large engines answer with a CAPTCHA, a
+suspension or an access denial. A plain instance then returns no results,
+and every request waits for the error.
+
+`searxng/settings.yml` enables the general engines that answered from this
+network and disables the ones that only return errors:
+
+| Engine | State | Reason |
+| --- | --- | --- |
+| Bing | enabled | Answers most queries. Some queries return no result. |
+| Mwmbl | enabled | Answers every test query. It has a small index. |
+| Seznam | enabled | Answers every test query. It finds direct file links. |
+| Brave | disabled | Every request is suspended. |
+| DuckDuckGo | disabled | Every request is a CAPTCHA. |
+| Google CSE | disabled | Suspended for unusual traffic. |
+| Mojeek, Startpage | inactive | SearXNG cannot pass their proof-of-work challenge. |
+| Marginalia | disabled | It needs an API key. |
+
+The container keeps no log, so use the health check:
+
+```bash
+make engines
+```
+
+The command asks each enabled general engine for one query. It prints `ok`,
+`failed`, `filtered` or `empty` for each one, and it exits 0 when at least
+one engine answers. To change the query or the address:
+
+```bash
+python3 scripts/check_engines.py --query "free knitting pattern" --url http://127.0.0.1:47821
+```
+
+To enable an engine again, set `disabled: false` for its `name` in the
+`engines` block of `searxng/settings.yml`. Restart the container, then run
+`make engines`.
+
+## Use from another container
+
+The published host port is on `127.0.0.1` by default, so no other device on
+the network can open the web interface. A container on the
+`quietsearx_searxng` network reaches the instance directly at
+`http://searxng:8080`, with no host port.
+
+For example, add this network to a service of another Compose project, then
+set its SearXNG URL to `http://searxng:8080`:
+
+```yaml
+services:
+  app:
+    networks:
+      - default
+      - quietsearx
+
+networks:
+  quietsearx:
+    external: true
+    name: quietsearx_searxng
+```
+
+JSON output is on. A request from that container looks like this:
+
+```bash
+curl -s 'http://searxng:8080/search?q=docker+compose&format=json'
+```
+
+To serve the web interface to another device, for example a phone on the
+same Tailscale network, set `SEARXNG_BIND_ADDRESS` to an address that the
+device can reach, and set `limiter: true` in `searxng/settings.yml`.
+
+## Debug a failing engine
+
+The SearXNG container has no log on purpose. When an engine fails, SearXNG
+writes a warning that contains the query text, and the default `json-file`
+driver keeps that text on disk. The engine health check replaces the log
+for daily use.
+
+When you must read the warnings, create a local override file named
+`docker-compose.override.yml`:
+
+```yaml
+services:
+  searxng:
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "1"
+```
+
+Then recreate the container:
+
+```bash
+docker compose up -d searxng
+docker compose logs -f searxng
+```
+
+Delete the override file and run `docker compose down && docker compose up
+-d` when you finish. The `down` command deletes the container and its log.
+
 ## Metadata protection
 
 The instance already does these things:
@@ -183,6 +294,10 @@ The instance already does these things:
 | `enable_http2: false` | HTTP/1.1 gives a more common TLS fingerprint than HTTP/2. |
 | `useragent_suffix: ""` | Nothing identifies this instance to the search engines. |
 | `image_proxy: true` | Image hosts see the instance, not your browser. |
+| `autocomplete: ""` | The search box sends no keystroke to a suggestion service. |
+| `favicon_resolver: ""` | No third-party favicon service receives the host of each result. |
+| No container log | A warning that contains the query text stays out of the disk. |
+| Loopback host port | Other devices on the LAN or the Tailnet cannot open the instance. |
 | SearXNG itself | The search engines see the instance, not your browser. |
 
 Two more measures are available. Both are off by default.
@@ -297,6 +412,7 @@ Run one part on its own:
 ```bash
 make lint               # ruff check and ruff format --check
 make test               # python3 -m unittest
+make engines            # report which general engines answer
 make compose-validate   # docker compose config
 make format             # apply the formatter and the safe fixes
 ```
@@ -321,9 +437,9 @@ MIT. See [LICENSE](LICENSE).
 
 ## Notes
 
-- The rate limiter is off. This is correct for a private local instance. Set
-  `limiter: true` in `searxng/settings.yml` when you make the instance
-  public.
+- The rate limiter is off. This is correct while the published port stays
+  on `127.0.0.1`. Set `limiter: true` in `searxng/settings.yml` when you set
+  `SEARXNG_BIND_ADDRESS` to an address that other devices can reach.
 - The container owns `searxng/`, so your user cannot edit `settings.yml`
   directly. Take ownership first:
 
@@ -341,8 +457,11 @@ MIT. See [LICENSE](LICENSE).
   `searxng/settings.yml`. SearXNG does not load them without Tor, and it
   writes one error per engine at every start. Delete the two entries when you
   turn on the tor profile.
-- The image runs granian, not uWSGI. It starts one worker with four threads.
-  The old `SEARXNG_UWSGI_WORKERS` and `SEARXNG_UWSGI_THREADS` variables had
-  no effect on it.
-- Select the search engines in the web interface. Open **Preferences** >
+- The image runs granian with one worker. Compose sets
+  `GRANIAN_BLOCKING_THREADS` to 16 (`SEARXNG_GRANIAN_THREADS`). The image
+  default of 4 threads serializes searches while the workers wait on the
+  engine responses. One worker is deliberate: each worker keeps its own
+  suspension state for the engines.
+- The engines in `searxng/settings.yml` are the default set. The web
+  interface also has a per-browser engine selection under **Preferences** >
   **Engines**.

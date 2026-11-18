@@ -56,7 +56,12 @@ services:
     networks:
       - searxng
     ports:
-      - "${SEARXNG_PORT:-47821}:8080"
+      # The published port is on the loopback address by default, so only this
+      # computer can open the web interface. Another container on this network
+      # uses http://searxng:8080 and needs no host port. Set
+      # SEARXNG_BIND_ADDRESS=0.0.0.0 (or a Tailscale address) only to serve
+      # other devices, and set limiter: true in searxng/settings.yml then.
+      - "${SEARXNG_BIND_ADDRESS:-127.0.0.1}:${SEARXNG_PORT:-47821}:8080"
     volumes:
       - ./searxng:/etc/searxng:rw
     # Every outgoing name lookup goes to the CoreDNS container.
@@ -70,13 +75,25 @@ services:
       # There is no default. Put your own key in a .env file. Generate one
       # with: openssl rand -hex 32
       SEARXNG_SECRET: ${SEARXNG_SECRET:?set SEARXNG_SECRET in a .env file, generate one with openssl rand -hex 32}
+      # A search waits on network I/O, so it holds its worker thread. The image
+      # default of 4 threads serializes concurrent searches from this network.
+      GRANIAN_BLOCKING_THREADS: "${SEARXNG_GRANIAN_THREADS:-16}"
     cap_drop:
       - ALL
+    security_opt:
+      # The container runs as the image user. It needs no new privilege.
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # No log. A warning that names a failed engine also contains the query text
+    # in the engine URL, and the json-file driver would keep that text on disk.
+    # Use the override file in README.md while you debug an engine.
     logging:
-      driver: json-file
-      options:
-        max-size: "1m"
-        max-file: "1"
+      driver: none
 
   # OPT-IN. Egress over Tor. Start it with:  docker compose --profile tor up -d
   # You must also uncomment the "outgoing.proxies" block in searxng/settings.yml.
@@ -102,7 +119,8 @@ services:
     profiles: ["cover"]
     restart: unless-stopped
     depends_on:
-      - searxng
+      searxng:
+        condition: service_healthy
     networks:
       - searxng
     volumes:
