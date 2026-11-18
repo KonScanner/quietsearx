@@ -2,7 +2,8 @@
 # configuration only. Run the checks with: make check
 
 [tool.ruff]
-target-version = "py313"
+# Ruff 0.15 or later knows the Python 3.15 target. An older ruff rejects this file.
+target-version = "py315"
 line-length = 100
 
 [tool.ruff.lint]

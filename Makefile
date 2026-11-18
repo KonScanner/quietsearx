@@ -1,5 +1,8 @@
 .PHONY: check lint format test engines compose-validate
 
+# Set PYTHON to select the interpreter, for example: make check PYTHON=python3.15
+PYTHON ?= python3
+
 # The full check. Run this before every commit.
 check: lint test compose-validate
 
@@ -12,8 +15,8 @@ format:
 	ruff check --fix cover/ scripts/
 
 test:
-	python3 -m unittest discover -s cover -t cover -v
-	python3 -m unittest discover -s scripts -t scripts -v
+	$(PYTHON) -m unittest discover -s cover -t cover -v
+	$(PYTHON) -m unittest discover -s scripts -t scripts -v
 
 # Report which enabled general engines answer. The container keeps no log, so
 # this is the health check for the engines.

@@ -6,7 +6,7 @@ request through Tor, and it can generate decoy searches that hide how often
 you search.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Python](https://img.shields.io/badge/python-3.13-blue)
+![Python](https://img.shields.io/badge/python-3.15-blue)
 ![Compose](https://img.shields.io/badge/docker-compose-blue)
 
 ## What this is
@@ -49,7 +49,7 @@ Items 4 and 5 are off by default. Read the warnings before you turn them on.
 ## Requirements
 
 - Docker Engine with the Compose plugin.
-- Python 3.13 or later, to run the tests. The containers do not need it.
+- Python 3.15 or later, to run the tests. The containers do not need it.
 
 ## Start
 
@@ -358,7 +358,7 @@ The generator applies four rules.
    state of a Mersenne Twister from its output and then predict every later
    value. A predictable schedule gives no protection.
 2. It sends a browser `User-Agent`. A request that carries
-   `Python-urllib/3.13` is easy to separate from a real search in the
+   `Python-urllib/3.15` is easy to separate from a real search in the
    SearXNG log. Set `COVER_USER_AGENT` to the value that your own browser
    sends.
 3. It keeps the decoy text out of the log. A log that lists every decoy lets
@@ -416,6 +416,9 @@ make engines            # report which general engines answer
 make compose-validate   # docker compose config
 make format             # apply the formatter and the safe fixes
 ```
+
+Run the check with another interpreter by setting `PYTHON`, for example
+`make check PYTHON=python3.15`.
 
 The lint configuration lives in `pyproject.toml`. The repository is not a
 Python package, so the file carries no package metadata.
